@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Generative Rose</title>
+  <style>
+    :root{ --bg:#0b0204; --glow1:#ff3b3b; --glow2:#ff7aa2 }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#0b0204 0%, #14040a 100%);font-family:Inter,system-ui,Arial}
+    .wrap{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column}
+    canvas{width:min(920px,92vw);height:min(920px,92vw);border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.02)}
+    .card{padding:18px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));backdrop-filter:blur(6px);text-align:center}
+    .caption{color:#ffdfe6;font-size:18px;margin-top:16px;opacity:0;line-height:1.5;animation:fadeIn 3s ease forwards 2.2s}
+    @keyframes fadeIn{from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:translateY(0)}}
+    .controls{position:fixed;left:18px;bottom:18px;color:#fff; font-size:13px;display:flex;gap:8px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.08);padding:8px 10px;border-radius:8px;color:#ffdfe6;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <canvas id="c"></canvas>
+      <div class="caption">Good morning, Evita ✨<br/>Every sunrise feels brighter knowing you exist.</div>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="replay">Replay</button>
+    <button class="btn" id="pause">Pause</button>
+    <button class="btn" id="download">Download PNG</button>
+  </div>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const DPR = Math.max(1, window.devicePixelRatio || 1);
+
+    function resize() {
+      const size = Math.min(window.innerWidth * 0.92, 920);
+      canvas.style.width = size + 'px';
+      canvas.style.height = size + 'px';
+      canvas.width = Math.floor(size * DPR);
+      canvas.height = Math.floor(size * DPR);
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const params = { k: 7, a: 120, turns: 3.2, speed: 0.006, thickness: 0.8, glowStrength: 12 };
+    const particles = [];
+    const MAX_PART = 600;
+    function spawnParticle(x,y,dx,dy,color,life=80){
+      if(particles.length>MAX_PART) particles.shift();
+      particles.push({x,y,dx,dy,life,maxLife:life,color});
+    }
+
+    function polarToXY(theta){
+      const k = params.k;
+      const a = params.a;
+      const r = a * Math.abs(Math.cos(k * theta)) * (0.9 + 0.2*Math.sin(theta*1.3));
+      const x = r * Math.cos(theta);
+      const y = r * Math.sin(theta);
+      return {x,y};
+    }
+
+    function colorAt(t){
+      const r1 = 255, g1 = 59, b1 = 59;
+      const r2 = 255, g2 = 122, b2 = 162;
+      const r = Math.round(r1 + (r2-r1)*t);
+      const g = Math.round(g1 + (g2-g1)*t);
+      const b = Math.round(b1 + (b2-b1)*t);
+      return `rgb(${r},${g},${b})`;
+    }
+
+    let theta = 0;
+    let drawing = true;
+    let points = [];
+
+    function reset(){
+      theta = 0;
+      points = [];
+      particles.length = 0;
+    }
+    reset();
+
+    function step(){
+      if(!drawing) return;
+      theta += params.speed;
+      const maxTheta = Math.PI * 2 * params.turns;
+      if(theta>maxTheta){ drawing = false; return; }
+      const p = polarToXY(theta);
+      points.push(p);
+      const tNorm = theta / (Math.PI*2*params.turns);
+      const glowColor = colorAt(Math.min(1, Math.max(0, 0.2 + 0.8*tNorm)));
+      for(let i=0;i<3;i++){
+        const a = (Math.random()-0.5)*0.6;
+        const speed = 0.2 + Math.random()*0.6;
+        spawnParticle(p.x + (Math.random()-0.5)*6, p.y + (Math.random()-0.5)*6, Math.cos(a)*speed, Math.sin(a)*speed, glowColor, 60 + Math.random()*40);
+      }
+    }
+
+    function updateParticles(){
+      for(let i = particles.length-1;i>=0;i--){
+        const q = particles[i];
+        q.x += q.dx; q.y += q.dy;
+        q.dx *= 0.99; q.dy *= 0.99;
+        q.life -= 1;
+        if(q.life<=0) particles.splice(i,1);
+      }
+    }
+
+    function render(){
+      const W = canvas.width / DPR;
+      const H = canvas.height / DPR;
+      ctx.clearRect(0,0,W,H);
+      ctx.save();
+      ctx.translate(W/2, H/2 - 40);
+      ctx.globalCompositeOperation = 'lighter';
+
+      if(points.length>1){
+        for(let i=1;i<points.length;i++){
+          const p0 = points[i-1];
+          const p1 = points[i];
+          const t = i/points.length;
+          ctx.strokeStyle = colorAt(t);
+          ctx.beginPath();
+          ctx.moveTo(p0.x,p0.y);
+          ctx.lineTo(p1.x,p1.y);
+          ctx.lineWidth = Math.max(0.3, params.thickness*(1 + 0.6*(1 - t)));
+          ctx.stroke();
+        }
+      }
+
+      for(const pt of particles){
+        const alpha = Math.max(0, pt.life/pt.maxLife);
+        ctx.beginPath();
+        ctx.fillStyle = pt.color.replace('rgb','rgba').replace(')', `,${(alpha*0.9).toFixed(2)})`);
+        ctx.arc(pt.x, pt.y, 1.4 + Math.random()*1.6, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // stem
+      ctx.strokeStyle = 'rgba(60,200,90,0.8)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0,40);
+      ctx.lineTo(0, H/2 - 20);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function loop(){
+      step();
+      updateParticles();
+      render();
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    document.getElementById('replay').addEventListener('click', ()=>{ drawing = true; reset(); loop(); });
+    document.getElementById('pause').addEventListener('click', ()=>{ drawing = !drawing; });
+    document.getElementById('download').addEventListener('click', ()=>{
+      const link = document.createElement('a');
+      link.download = 'generative_rose.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    params.speed *= 1.4;
+    setTimeout(()=>{ params.speed /= 1.4; }, 1200);
+  </script>
+</body>
+</html>
