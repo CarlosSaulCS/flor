@@ -20,7 +20,7 @@
   <div class="wrap">
     <div class="card">
   <canvas id="c"></canvas>
-  <div class="caption">Buenas noches ✨ Que tus sueños sean dulces y tu mañana, brillante. hecho por CS</div>
+  <div class="caption" id="caption">Cargando...</div>
     </div>
   </div>
   <div class="controls">
@@ -33,6 +33,126 @@
     const ctx = canvas.getContext('2d');
     const DPR = Math.max(1, window.devicePixelRatio || 1);
 
+    // Frases casuales y lindas por hora (0-23). Se elige una al azar según la hora actual.
+    const phrasesByHour = {
+      0: [
+        "La noche está tranquila; respira hondo y sonríe.",
+        "Pequeños luceros acompañan tus pensamientos esta noche."
+      ],
+      1: [
+        "La calma tiene su propio brillo ahora.",
+        "Que la noche te guarde cosas amables."
+      ],
+      2: [
+        "Las horas tardías traen ideas suaves; déjalas entrar.",
+        "Todo parece más tierno cuando la ciudad duerme."
+      ],
+      3: [
+        "Silencio y paz; un susurro de descanso.",
+        "La madrugada es buena para soñar sin prisa."
+      ],
+      4: [
+        "A esa hora la luz aún no llega, pero la espera tiene encanto.",
+        "Hay un momento entre sueño y día que huele a posibilidades."
+      ],
+      5: [
+        "Un café imaginario y la mañana ya parece más amigable.",
+        "El mundo se estira despacio; tú también puedes hacerlo."
+      ],
+      6: [
+        "Las primeras luces invitan a respirar profundo.",
+        "Hoy empieza con tonos suaves; baja el ritmo y mira."
+      ],
+      7: [
+        "La mañana trae pequeños milagros; estate atento a ellos.",
+        "Un saludo al día: nada urgente, mucho encanto."
+      ],
+      8: [
+        "Que la mañana te encuentre con calma y una sonrisa discreta.",
+        "Poco a poco, el día se pinta de cosas buenas."
+      ],
+      9: [
+        "Las horas de sol son buenas para decisiones suaves.",
+        "Un minuto para ti: respira, mira, sigue."
+      ],
+      10: [
+        "Hoy tiene sabor a cosas pequeñas pero felices.",
+        "Haz algo ligero que te saque una sonrisa."
+      ],
+      11: [
+        "La mitad de la mañana invita a un respiro breve.",
+        "Un pequeño gesto puede mejorar el resto del día."
+      ],
+      12: [
+        "Mediodía: el sol y la calma se encuentran.",
+        "Que tu pausa sea dulce, aunque breve."
+      ],
+      13: [
+        "La tarde asoma con planes sencillos y tranquilos.",
+        "Un rato para pensar en voz baja, sin prisas."
+      ],
+      14: [
+        "Si el día pide pausa, tómala con cariño.",
+        "Toma algo rico y deja que la tarde haga su trabajo."
+      ],
+      15: [
+        "La luz de la tarde tiene tonos para recordar.",
+        "Un momento amable: mira alrededor y guarda uno."
+      ],
+      16: [
+        "La tarde sabe a conversaciones con risas contenidas.",
+        "Cambia el ritmo si lo sientes; está bien."
+      ],
+      17: [
+        "La tarde baja la voz; escucha lo que te gusta.",
+        "El día se suaviza y eso también te suaviza."
+      ],
+      18: [
+        "Atardecer: colores que abrazan sin decir mucho.",
+        "Una luz cálida para ideas tranquilas."
+      ],
+      19: [
+        "La noche se prepara con calma; tú puedes hacer lo mismo.",
+        "Un paseo con la vista al cielo arregla cosas pequeñas."
+      ],
+      20: [
+        "Hay tiempo para un respiro largo y nada más.",
+        "Que la noche traiga descanso sin dramatismos."
+      ],
+      21: [
+        "Luces tenues y pensamientos suaves, buena combinación.",
+        "Apaga un poco la prisa y enciende lo que te gusta."
+      ],
+      22: [
+        "La noche tiene un filtro especial; úsalo y sonríe.",
+        "Historias pequeñas se cuentan mejor a esta hora."
+      ],
+      23: [
+        "Cierra el día con algo sencillo que te guste recordar.",
+        "Hoy hizo cosas buenas, aunque hayan sido en silencio."
+      ],
+      default: [
+        "Un momento amable para ti, ahora mismo.",
+        "Pequeñas buenas cosas se preparan en silencio."
+      ]
+    };
+
+    function choosePhraseForHour(date = new Date()){
+      const h = date.getHours();
+      const list = phrasesByHour[h] || phrasesByHour.default;
+      return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function setCaption(text){
+      const el = document.getElementById('caption');
+      if(!el) return;
+      // reiniciar animación para que vuelva a aparecer bonito
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.innerHTML = text;
+      el.style.animation = '';
+    }
+
     function resize() {
       const size = Math.min(window.innerWidth * 0.92, 920);
       canvas.style.width = size + 'px';
@@ -41,8 +161,11 @@
       canvas.height = Math.floor(size * DPR);
       ctx.setTransform(DPR,0,0,DPR,0,0);
     }
-    window.addEventListener('resize', resize);
-    resize();
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Mostrar una frase acorde a la hora al cargar
+  setCaption(choosePhraseForHour());
 
     const params = { k: 7, a: 120, turns: 3.2, speed: 0.006, thickness: 0.8, glowStrength: 12 };
     const particles = [];
@@ -156,7 +279,11 @@
     }
     loop();
 
-    document.getElementById('replay').addEventListener('click', ()=>{ drawing = true; reset(); loop(); });
+    document.getElementById('replay').addEventListener('click', ()=>{ 
+      drawing = true; reset(); loop(); 
+      // al replayear, elegir una nueva frase acorde a la hora
+      setCaption(choosePhraseForHour());
+    });
     document.getElementById('pause').addEventListener('click', ()=>{ drawing = !drawing; });
     document.getElementById('download').addEventListener('click', ()=>{
       const link = document.createElement('a');
